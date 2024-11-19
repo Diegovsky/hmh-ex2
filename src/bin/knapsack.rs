@@ -1,6 +1,6 @@
 use std::{
-    fs::File,
-    io::{self, BufRead, BufReader}, time::Instant,
+    io::{self, BufRead, BufReader},
+    time::Instant,
 };
 
 use bitvec::prelude::*;
@@ -42,28 +42,31 @@ fn read_knapsack(args: &Args) -> io::Result<(Weight, Vec<Item>)> {
 #[derive(Clone, Default)]
 struct Solution {
     items: BitVec,
+    mode: Mode,
 }
 
 impl Solution {
-    fn initial(k: usize) -> Self {
+    fn initial(k: usize, eval_method: Mode) -> Self {
         let mut items = BitVec::repeat(false, k);
         items.set(0, true);
         Self {
-            items
+            items,
+            mode: eval_method,
         }
     }
     fn evaluate(&self, items: &[Item]) -> f64 {
-        self.items
-            .iter_ones()
-            .map(|index| &items[index])
-            .map(|i| i.value as f64 / i.weight as f64)
-            .sum()
+        match self.mode {
+            Mode::Best => self
+                .items
+                .iter_ones()
+                .map(|index| &items[index])
+                .map(|i| i.weight as f64 / i.value as f64)
+                .sum(),
+            Mode::First => self.total_value(items) as _,
+        }
     }
     fn total_value(&self, items: &[Item]) -> Weight {
-        self.items
-            .iter_ones()
-            .map(|index| items[index].value)
-            .sum()
+        self.items.iter_ones().map(|index| items[index].value).sum()
     }
     fn total_weight(&self, items: &[Item]) -> Weight {
         self.items
@@ -89,10 +92,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let k = items.len();
     assert_ne!(k, 0);
 
-    let mut best_solution: Solution = Solution::initial(k);
+    let mut best_solution: Solution = Solution::initial(k, args.mode);
     let mut best_solution_worth = best_solution.evaluate(&items);
 
-    println!("Solução inicial: {best_solution:?}\nValor: {}", best_solution.total_value(&items));
+    println!(
+        "Solução inicial: {best_solution:?}\nValor: {}",
+        best_solution.total_value(&items)
+    );
     let now = Instant::now();
     for i in 0..args.iter_steps {
         let mut improved = false;
@@ -101,7 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             new_solution.flip(a);
 
             let new_worth = new_solution.evaluate(&items);
-            if new_solution.total_weight(&items) <= maxw && new_worth >= best_solution_worth {
+            if new_solution.total_weight(&items) <= maxw && new_worth <= best_solution_worth {
                 best_solution = new_solution;
                 best_solution_worth = new_worth;
                 improved = true;
@@ -118,7 +124,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             break;
         }
     }
-    println!("Solução final: {best_solution:?}\nValor: {}", best_solution.total_value(&items));
+    println!(
+        "Solução final: {best_solution:?}\nValor: {}",
+        best_solution.total_value(&items)
+    );
     println!("Tempo de execução: {:?}", now.elapsed());
     Ok(())
 }
