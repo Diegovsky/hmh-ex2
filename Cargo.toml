@@ -1,0 +1,12 @@
+[package]
+name = "ex2"
+version = "0.1.0"
+edition = "2021"
+
+# [[bin]]
+# name = "bin-str"
+
+
+[dependencies]
+bitvec = "1.0.1"
+ex1 = { version = "0.1.0", path = "../ex1" }
